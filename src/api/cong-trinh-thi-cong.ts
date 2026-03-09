@@ -38,3 +38,20 @@ export async function fetchProjects(
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
+
+export interface CreateProjectPayload {
+  name: string
+  projectCategoryId: string
+}
+
+export async function createProject(
+  payload: CreateProjectPayload
+): Promise<Project> {
+  const res = await fetch(`${API_BASE}/project`, {
+    method: 'POST',
+    headers: { Accept: '*/*', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}

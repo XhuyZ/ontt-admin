@@ -1,14 +1,42 @@
+import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Card, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Plus } from 'lucide-react'
 import {
   fetchProjects,
+  createProject,
   PROJECT_CATEGORY_IDS,
   type ProjectCategoryKey,
   type Project,
 } from '@/api/cong-trinh-thi-cong'
+
+const PROJECT_CATEGORY_OPTIONS = (
+  Object.entries(PROJECT_CATEGORY_IDS) as [ProjectCategoryKey, string | null][]
+).filter(([key, id]) => key !== 'all' && id)
+
+const PROJECT_CATEGORY_ITEMS: Record<string, string> = Object.fromEntries(
+  PROJECT_CATEGORY_OPTIONS.map(([label, id]) => [id!, label])
+)
 
 export const Route = createFileRoute('/_admin/cong-trinh-thi-cong')({
   component: CongTrinhThiCongPage,
@@ -35,10 +63,7 @@ function CongTrinhThiCongPage() {
             Quản lý danh sách công trình thi công
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 size-4" />
-          Thêm công trình
-        </Button>
+        <AddProjectDialog />
       </div>
 
       <CategoryFilter current={category} />
@@ -69,6 +94,102 @@ function CongTrinhThiCongPage() {
         </div>
       )}
     </div>
+  )
+}
+
+function AddProjectDialog() {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [projectCategoryId, setProjectCategoryId] = useState<string>('')
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: createProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      toast.success('Thêm công trình thành công')
+      setName('')
+      setProjectCategoryId('')
+      setOpen(false)
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra')
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) {
+      toast.error('Vui lòng nhập tên công trình')
+      return
+    }
+    if (!projectCategoryId) {
+      toast.error('Vui lòng chọn phân loại')
+      return
+    }
+    mutation.mutate({ name: name.trim(), projectCategoryId })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <Button>
+            <Plus className="mr-2 size-4" />
+            Thêm công trình
+          </Button>
+        }
+      />
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Thêm công trình mới</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="project-name">Tên công trình</Label>
+              <Input
+                id="project-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nhập tên công trình"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Phân loại</Label>
+              <Select
+                value={projectCategoryId || null}
+                onValueChange={(v) => setProjectCategoryId(v ?? '')}
+                items={PROJECT_CATEGORY_ITEMS}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Chọn phân loại" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROJECT_CATEGORY_OPTIONS.map(([label, id]) => (
+                    <SelectItem key={id!} value={id!}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? 'Đang thêm...' : 'Thêm công trình'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -112,12 +233,12 @@ function ProjectCard({ project }: { project: Project }) {
       </div>
       <CardHeader className="space-y-1 p-4 pb-2">
         <h3 className="line-clamp-2 font-medium">{project.name}</h3>
-        <p className="text-sm text-muted-foreground">
+        <span className="inline-block rounded-md bg-secondary/80 px-2 py-0.5 text-xs font-medium text-secondary-foreground">
           {project.projectCategory.name}
-        </p>
+        </span>
       </CardHeader>
       <CardFooter className="p-4 pt-0">
-        <Button variant="outline" size="sm" className="w-full">
+        <Button variant="secondary" size="sm" className="w-full">
           Sửa
         </Button>
       </CardFooter>

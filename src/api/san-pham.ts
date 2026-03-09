@@ -36,3 +36,18 @@ export async function fetchProducts(categoryId: string | null): Promise<Product[
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
+
+export interface CreateProductPayload {
+  name: string
+  categoryId: string
+}
+
+export async function createProduct(payload: CreateProductPayload): Promise<Product> {
+  const res = await fetch(`${API_BASE}/products`, {
+    method: 'POST',
+    headers: { Accept: '*/*', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
