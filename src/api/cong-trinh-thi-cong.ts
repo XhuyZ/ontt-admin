@@ -55,3 +55,50 @@ export async function createProject(
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
+
+export async function deleteProject(
+  id: string
+): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/project/${id}`, {
+    method: 'DELETE',
+    headers: { Accept: '*/*' },
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
+export interface UpdateProjectPayload {
+  name?: string
+  projectCategoryId?: string
+}
+
+export async function updateProject(
+  id: string,
+  payload: UpdateProjectPayload
+): Promise<Project> {
+  const res = await fetch(`${API_BASE}/project/${id}`, {
+    method: 'PATCH',
+    headers: { Accept: '*/*', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
+export async function uploadProjectImage(
+  projectId: string,
+  file: File
+): Promise<ProjectImage> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(
+    `${API_BASE}/images/upload/project/${projectId}`,
+    {
+      method: 'POST',
+      headers: { Accept: '*/*' },
+      body: formData,
+    }
+  )
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}

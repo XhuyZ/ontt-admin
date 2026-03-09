@@ -21,13 +21,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Plus, Trash2, Upload } from 'lucide-react'
 import {
   fetchProducts,
   createProduct,
+  deleteProduct,
+  updateProduct,
+  uploadProductImage,
   CATEGORY_IDS,
   type CategoryKey,
   type Product,
+  type ProductImage,
 } from '@/api/san-pham'
 
 const CATEGORY_OPTIONS = (
@@ -193,6 +207,178 @@ function AddProductDialog() {
   )
 }
 
+function EditProductDialog({ product }: { product: Product }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(product.name)
+  const [categoryId, setCategoryId] = useState<string>(
+    product.category?.id ?? ''
+  )
+  const [images, setImages] = useState<ProductImage[]>(product.images ?? [])
+  const [uploading, setUploading] = useState(false)
+  const queryClient = useQueryClient()
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: { name: string; categoryId?: string }) =>
+      updateProduct(product.id, payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success('Đã cập nhật sản phẩm')
+      setImages(data.images ?? [])
+      setOpen(false)
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra')
+    },
+  })
+
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
+      setName(product.name)
+      setCategoryId(product.category?.id ?? '')
+      setImages(product.images ?? [])
+    }
+    setOpen(next)
+  }
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files?.length) return
+    setUploading(true)
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        if (!file.type.startsWith('image/')) continue
+        const uploaded = await uploadProductImage(product.id, file)
+        setImages((prev) => [...prev, uploaded])
+      }
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success('Đã thêm ảnh')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Upload thất bại')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) {
+      toast.error('Vui lòng nhập tên sản phẩm')
+      return
+    }
+    updateMutation.mutate({
+      name: name.trim(),
+      categoryId: categoryId || undefined,
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="flex-1"
+        onClick={() => setOpen(true)}
+      >
+        Sửa
+      </Button>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Sửa sản phẩm</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-6 py-4 md:grid-cols-2">
+          <div className="space-y-3">
+            <Label>Hình ảnh</Label>
+            <div
+              className="flex min-h-[200px] flex-col gap-3 rounded-lg border-2 border-dashed border-muted-foreground/25 p-4 transition-colors hover:border-muted-foreground/50"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault()
+                handleUpload(e.dataTransfer.files)
+              }}
+              onClick={() =>
+                (document.getElementById(`upload-product-${product.id}`) as HTMLInputElement)?.click()
+              }
+            >
+              <input
+                id={`upload-product-${product.id}`}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleUpload(e.target.files)}
+              />
+              <div className="grid grid-cols-3 gap-2">
+                {images.map((img) => (
+                  <div
+                    key={img.id}
+                    className="aspect-square overflow-hidden rounded-md bg-muted"
+                  >
+                    <img
+                      src={img.imgUrl ?? `https://api.opnhuatuankiet.io.vn${img.url}`}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+                <Upload className="size-8" />
+                {uploading ? (
+                  <span>Đang tải lên...</span>
+                ) : (
+                  <span>Kéo thả ảnh hoặc bấm để chọn (nhiều ảnh)</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Tên sản phẩm</Label>
+              <Input
+                id="edit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nhập tên sản phẩm"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Phân loại</Label>
+              <Select
+                value={categoryId || null}
+                onValueChange={(v) => setCategoryId(v ?? '')}
+                items={CATEGORY_ITEMS}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Chọn phân loại" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map(([label, id]) => (
+                    <SelectItem key={id!} value={id!}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function CategoryFilter({ current }: { current: CategoryKey }) {
   const navigate = Route.useNavigate()
   const categories = Object.keys(CATEGORY_IDS) as CategoryKey[]
@@ -214,34 +400,82 @@ function CategoryFilter({ current }: { current: CategoryKey }) {
 }
 
 function ProductCard({ product }: { product: Product }) {
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const queryClient = useQueryClient()
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProduct(product.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      toast.success('Đã xóa sản phẩm')
+      setDeleteOpen(false)
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra')
+    },
+  })
+
   const imageUrl = product.images?.[0]?.imgUrl ?? null
 
   return (
-    <Card className="overflow-hidden transition-shadow hover:shadow-md">
-      <div className="aspect-square bg-muted">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={product.name}
-            className="size-full object-cover"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center text-muted-foreground">
-            Chưa có ảnh
-          </div>
-        )}
-      </div>
-      <CardHeader className="space-y-1 p-4 pb-2">
-        <h3 className="line-clamp-2 font-medium">{product.name}</h3>
-        <span className="inline-block rounded-md bg-secondary/80 px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-          {product.category?.name ?? '-'}
-        </span>
-      </CardHeader>
-      <CardFooter className="p-4 pt-0">
-        <Button variant="secondary" size="sm" className="w-full">
-          Sửa
-        </Button>
-      </CardFooter>
-    </Card>
+    <>
+      <Card className="overflow-hidden transition-shadow hover:shadow-md">
+        <div className="aspect-square bg-muted">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={product.name}
+              className="size-full object-cover"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-muted-foreground">
+              Chưa có ảnh
+            </div>
+          )}
+        </div>
+        <CardHeader className="space-y-1 p-4 pb-2">
+          <h3 className="line-clamp-2 font-medium">{product.name}</h3>
+          <span className="inline-block rounded-md bg-secondary/80 px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+            {product.category?.name ?? '-'}
+          </span>
+        </CardHeader>
+        <CardFooter className="flex gap-2 p-4 pt-0">
+          <EditProductDialog product={product} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="size-3.5" />
+            Xóa
+          </Button>
+        </CardFooter>
+      </Card>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa sản phẩm &quot;{product.name}&quot;? Hành động
+              này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                deleteMutation.mutate()
+              }}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

@@ -51,3 +51,48 @@ export async function createProduct(payload: CreateProductPayload): Promise<Prod
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
+
+export async function deleteProduct(id: string): Promise<{ deleted: boolean }> {
+  const res = await fetch(`${API_BASE}/products/${id}`, {
+    method: 'DELETE',
+    headers: { Accept: '*/*' },
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
+export interface UpdateProductPayload {
+  name?: string
+  categoryId?: string
+}
+
+export async function updateProduct(
+  id: string,
+  payload: UpdateProductPayload
+): Promise<Product> {
+  const res = await fetch(`${API_BASE}/products/${id}`, {
+    method: 'PATCH',
+    headers: { Accept: '*/*', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
+
+export async function uploadProductImage(
+  productId: string,
+  file: File
+): Promise<ProductImage> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(
+    `${API_BASE}/images/upload/product/${productId}`,
+    {
+      method: 'POST',
+      headers: { Accept: '*/*' },
+      body: formData,
+    }
+  )
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  return res.json()
+}
