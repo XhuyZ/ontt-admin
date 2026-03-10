@@ -69,10 +69,10 @@ function SanPhamPage() {
   })
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Sản phẩm</h1>
+    <div className="min-w-0 space-y-4 md:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold sm:text-2xl">Sản phẩm</h1>
           <p className="text-muted-foreground">
             Quản lý danh sách sản phẩm
           </p>
@@ -83,7 +83,7 @@ function SanPhamPage() {
       <CategoryFilter current={category} />
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="overflow-hidden">
               <div className="aspect-square bg-muted animate-pulse" />
@@ -95,7 +95,7 @@ function SanPhamPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {data?.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -154,7 +154,7 @@ function AddProductDialog() {
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
         <DialogHeader>
           <DialogTitle>Thêm sản phẩm mới</DialogTitle>
         </DialogHeader>
@@ -281,11 +281,11 @@ function EditProductDialog({ product }: { product: Product }) {
       >
         Sửa
       </Button>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Sửa sản phẩm</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-6 py-4 md:grid-cols-2">
+        <div className="grid gap-4 py-4 md:grid-cols-2 md:gap-6">
           <div className="space-y-3">
             <Label>Hình ảnh</Label>
             <div
@@ -384,7 +384,7 @@ function CategoryFilter({ current }: { current: CategoryKey }) {
   const categories = Object.keys(CATEGORY_IDS) as CategoryKey[]
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
       {categories.map((key) => (
         <Button
           key={key}
